@@ -1,40 +1,23 @@
 //
-//  Expense.swift
+//  Workouts.swift
 //  ToolWorkoutCounter
 //
-//  Created by Cristiano Afonso da Silva on 16/05/2025.
+//  Created by Cristiano Afonso da Silva on 18/05/2025.
 //
 
 import Foundation
 import SwiftData
 
-
 @Model
-class Workouts {
-    var workouts: [Workout]
-    var date: Date
-    
-    init(workouts: [Workout], date: Date) {
-        self.workouts = workouts
-        self.date = date
-    }
-}
-
-class Workout {
-    var workout: [Exercise]
-    
-    init(workout: [Exercise]) {
-        self.workout = workout
-    }
-}
-
-class Exercise {
+class Exercise: Identifiable {
+    var id: String
     var name: String
     var reps: Int
     var time: Int
     var sets: Int
-    
-    init(name: String, reps: Int, time: Int, sets: Int) {
+
+    init(name: String, reps: Int = 0, time: Int = 0, sets: Int = 0) {
+        self.id = UUID().uuidString
         self.name = name
         self.reps = reps
         self.time = time
@@ -42,3 +25,22 @@ class Exercise {
     }
 }
 
+@Model
+class Workouts: Identifiable {
+    var id: String
+    var date: Date
+    var exercises: [Exercise] = []
+
+    static let presetExerciseNames: [String] = [
+      "Push Up", "Diamond Push Up", "Squat", "Plank",
+      "Lunge", "Burpee", "Mountain Climber", "Sit Up",
+      "Bicycle Crunch", "Jump Squat", "Pull Up", "Dip",
+      "Muscle Up", "Reverse Rowing", "Deadlift", "Bench Press",
+      "Dumbbell Row", "Kettlebell Swing", "Shoulder Press", "Bicep Curl"
+    ]
+
+    init() {
+        self.id = UUID().uuidString
+        self.date = .now
+    }
+}
