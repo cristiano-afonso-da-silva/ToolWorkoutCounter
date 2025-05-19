@@ -6,15 +6,25 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct ToolWorkoutCounterApp: App {
+    
+//    work in real world
+//    let container: ModelContainer = {
+//        let schema = Schema([Workouts.self])
+//        let container = ModelContainer(for: schema, configuratons: [])
+//        return container
+//    }()
     
     var body: some Scene {
         WindowGroup {
             WorkoutCounterMain()
                 .withRouter()
         }
-        .modelContainer(for: Workouts.self)
+//        .modelContainer(container)
+        .modelContainer(for: [Workouts.self])
+        .modelContainer(for: [Exercise.self])
     }
 }

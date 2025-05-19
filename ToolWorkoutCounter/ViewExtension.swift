@@ -22,6 +22,8 @@ struct RouterViewModifier: ViewModifier {
                 WorkoutCounterSelection()
             case .exercise:
                 WorkoutCounterExercise()
+            case .exerciseTestData:
+                WorkoutCounterExerciseTestData()
             }
         }
         .environment(router)

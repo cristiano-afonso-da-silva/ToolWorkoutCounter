@@ -36,6 +36,11 @@ struct WorkoutCounterMain: View {
                 router.navigateToExercise()
             }
             
+            Button("Start the last exercise") {
+                router.navigateToExerciseTestData()
+            }
+            .foregroundStyle(.red)
+            
         }
         .padding()
         .navigationBarBackButtonHidden(true)

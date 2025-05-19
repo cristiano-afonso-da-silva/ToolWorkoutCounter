@@ -28,6 +28,10 @@ class Router {
         path.append(Route.exercise)
     }
     
+    func navigateToExerciseTestData() {
+        path.append(Route.exerciseTestData)
+    }
+    
     func dismiss() {
         guard !path.isEmpty else { return }
         path.removeLast()
@@ -43,4 +47,5 @@ enum Route: Hashable {
     case form
     case select
     case exercise
+    case exerciseTestData
 }

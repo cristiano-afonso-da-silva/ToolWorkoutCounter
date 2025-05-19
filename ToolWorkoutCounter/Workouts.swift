@@ -10,14 +10,12 @@ import SwiftData
 
 @Model
 class Exercise: Identifiable {
-    var id: String
     var name: String
     var reps: Int
     var time: Int
     var sets: Int
 
     init(name: String, reps: Int = 0, time: Int = 0, sets: Int = 0) {
-        self.id = UUID().uuidString
         self.name = name
         self.reps = reps
         self.time = time
