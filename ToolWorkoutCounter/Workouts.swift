@@ -10,23 +10,25 @@ import SwiftData
 
 @Model
 class Exercise: Identifiable {
+    var workoutID: String?
     var name: String
     var reps: Int
     var time: Int
     var sets: Int
 
-    init(name: String, reps: Int = 0, time: Int = 0, sets: Int = 0) {
+    init(name: String, reps: Int = 0, time: Int = 0, sets: Int = 0, workoutID: String? = nil) {
         self.name = name
         self.reps = reps
         self.time = time
         self.sets = sets
+        self.workoutID = workoutID
     }
 }
 
 @Model
 class Workouts: Identifiable {
-    var id: String
-    var date: Date
+    @Attribute(.unique) private(set) var id: String = UUID().uuidString
+    var date: Date = Date()
     var exercises: [Exercise] = []
 
     static let presetExerciseNames: [String] = [

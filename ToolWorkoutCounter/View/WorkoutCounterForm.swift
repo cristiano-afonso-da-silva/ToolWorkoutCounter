@@ -5,15 +5,28 @@
 //  Created by Cristiano Afonso da Silva on 15/05/2025.
 //
 
+//
+//  WorkoutCounterForm.swift
+//  ToolWorkoutCounter
+//
+
 import SwiftUI
+import SwiftData
 
 struct WorkoutCounterForm: View {
-    
-    @Environment(Router.self) var router
-    let columns = [GridItem(.flexible()), GridItem(.flexible())]
-    @State private var reps: String = ""
-    @State private var sets: String = ""
-    
+    // ── Environment & input ───────────────────────────────────────────────
+    @Environment(Router.self) private var router
+    let workoutID: String
+
+    // ── Fetch only the exercises for this workout ─────────────────────────
+    @Query private var exercises: [Exercise]
+
+    init(workoutID: String) {
+        self.workoutID = workoutID
+        _exercises = Query(filter: #Predicate<Exercise> { $0.workoutID == workoutID })
+    }
+
+    // ── UI ────────────────────────────────────────────────────────────────
     var body: some View {
         VStack {
             HStack {
@@ -21,56 +34,46 @@ struct WorkoutCounterForm: View {
                 Spacer()
                 Text("Workout Counter")
                 Spacer()
+                Button("...") {}
             }
-            HStack {
-                Text("Set your reps, and choose your time")
-                Spacer()
-            }
-            Spacer()
-            ScrollView {
-                VStack {
-                    VStack {
-                        HStack {
-                            Text("Exercise Name")
-                            Spacer()
-                        }
-                        HStack {
-                            Text("Reps")
-                            TextField(text: $reps, prompt: Text("required")) {
-                                
-                            }
-                            Text("Sets")
-                            TextField(text: $sets, prompt: Text("required")) {
-                            }
-                            Spacer()
-                        }
-                    }
-                    VStack {
-                        HStack {
-                            Text("Exercise Name")
-                            Spacer()
-                        }
-                        HStack {
-                            Text("Reps")
-                            TextField(text: $reps, prompt: Text("required")) {
-                                
-                            }
-                            Text("Sets")
-                            TextField(text: $sets, prompt: Text("required")) {
-                            }
-                            Spacer()
-                        }
-                    }
+
+            Form {
+                ForEach(exercises) { exercise in
+                    ExerciseEditSection(exercise: exercise)
                 }
             }
-            Spacer()
+            .formStyle(.grouped)
+
             Button("Continue") { router.navigateToExercise() }
+                .buttonStyle(.borderedProminent)
+                .padding(.top)
         }
         .padding()
         .navigationBarBackButtonHidden(true)
     }
 }
 
-#Preview {
-    WorkoutCounterForm()
+// ── Re-usable sub-view that edits ONE exercise ───────────────────────────
+
+private struct ExerciseEditSection: View {
+    @Bindable var exercise: Exercise        // ← live binding
+
+    var body: some View {
+        Section(exercise.name) {
+            field(label: "Reps",   value: $exercise.reps)
+            field(label: "Time (s)", value: $exercise.time)
+            field(label: "Sets",   value: $exercise.sets)
+        }
+    }
+
+    private func field(label: String, value: Binding<Int>) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("0", value: value, format: .number)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(.numberPad)
+                .frame(maxWidth: 80)
+        }
+    }
 }

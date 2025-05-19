@@ -6,162 +6,194 @@
 //
 
 import SwiftUI
+import SwiftData
+import Combine
 
 struct WorkoutCounterExercise: View {
-    
-    @Environment(Router.self) var router
-    let columns = [GridItem(.flexible()), GridItem(.flexible())]
-    @State private var speed = 50.0
-    @State private var isEditing = false
-    
-    var body: some View {
-        VStack {
-            HStack {
-                Button("X") { router.popToRoot() }
-                Spacer()
-                Text("Workout Counter")
-                Spacer()
-                Button("...") {
-                    
-                }
-            }
-            Spacer()
-            VStack {
-                Image(systemName: "star")
-                Text("Push Up")
-                HStack {
-                    VStack {
-                        Text("10")
-                        Text("reps")
-                    }
-                    VStack {
-                        Text("2")
-                        Text("min")
-                    }
-                }
-            }
-            Spacer()
-            ZStack {
-                StreakView(completedDates: sampleData())
-            }
-            HStack {
-                Image(systemName: "star")
-                VStack {
-                    Image(systemName: "star.fill")
-                    Text("Push Up Exercise")
-                }
-                Image(systemName: "star")
-            }
-            Slider(
-                        value: $speed,
-                        in: 0...100,
-                        onEditingChanged: { editing in
-                            isEditing = editing
-                        }
-                    )
-            Text("\(speed)")
-                .foregroundColor(isEditing ? .red : .blue)
+    // MARK: – Environment / Data
+    @Environment(Router.self) private var router
 
+    /// All workouts, newest first
+    @Query(sort: \Workouts.date, order: .reverse)
+    private var workouts: [Workouts]
+
+    /// Active workout (nil when there is none)
+    private var workout: Workouts? { workouts.first }
+
+    /// Convenience
+    private var exerciseList: [Exercise] { workout?.exercises ?? [] }
+    private var exerciseCount: Int      { exerciseList.count }
+    private var activeExercise: Exercise? {
+        guard currentExercise < exerciseList.count else { return nil }
+        return exerciseList[currentExercise]
+    }
+
+    // MARK: – Timer state
+    private enum TimerState { case stopped, running, paused }
+    @State private var state: TimerState = .stopped
+
+    @State private var currentExercise = 0
+    @State private var currentSet      = 1
+    @State private var elapsed         = 0        // seconds within current set
+
+    @State private var timerCancellable: AnyCancellable?
+
+    // MARK: – View
+    var body: some View {
+        VStack(spacing: 16) {
+            header
+            WeeklyStreakBar()
+            Spacer(minLength: 8)
+
+            if let exercise = activeExercise {
+                exerciseDetails(for: exercise)
+                progressBar(for: exercise)
+            } else {
+                emptyState
+            }
+
+            Spacer()
+
+            controlButtons
         }
         .padding()
         .navigationBarBackButtonHidden(true)
+        .onDisappear { stopTimer() }          // tidy up
     }
-}
 
-func sampleData() -> [Date] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        return [
-            calendar.date(byAdding: .day, value: -2, to: today)!,
-            calendar.date(byAdding: .day, value: -1, to: today)!,
-            today
-        ]
-}
+    // MARK: – UI sub-components
+    private var header: some View {
+        HStack {
+            Button("X") { router.popToRoot() }
+            Spacer()
+            Text("Workout Counter")
+            Spacer()
+        }
+        .font(.headline)
+    }
 
-struct StreakDay: Identifiable {
-    let id = UUID()
-    let date: Date
-    var isCompleted: Bool
-    var isToday: Bool
-}
+    private func exerciseDetails(for ex: Exercise) -> some View {
+        VStack(spacing: 4) {
+            Text(ex.name).font(.title2.bold())
+            HStack(spacing: 24) {
+                Label("\(ex.reps) reps",  systemImage: "repeat")
+                Label("\(ex.sets) sets",  systemImage: "square.stack.3d.up")
+                Label(formatSeconds(ex.time), systemImage: "timer")
+            }
+            .font(.subheadline)
+            Text("Set \(currentSet) / \(ex.sets)")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
 
-struct StreakView: View {
-    let completedDates: [Date]  // Input data
-    @State private var streakDays: [StreakDay] = []
+    private func progressBar(for ex: Exercise) -> some View {
+        VStack {
+            Slider(value: .constant(Double(elapsed)),
+                   in: 0...Double(ex.time))
+                .disabled(true)
+            Text(formatSeconds(elapsed))
+                .monospacedDigit()
+                .font(.system(.body, design: .rounded))
+        }
+    }
 
-    var body: some View {
-        VStack(spacing: 12) {
-            if streakDays.isEmpty {
-                Text("No Streak")
-                    .foregroundColor(.gray)
-                    .font(.headline)
-            } else {
-                HStack(spacing: 12) {
-                    ForEach(streakDays) { day in
-                        VStack(spacing: 4) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(backgroundColor(for: day))
-                                    .frame(width: 28, height: 28)
+    private var emptyState: some View {
+        ContentUnavailableView(label: {
+            Label("No Workouts", systemImage: "figure.strengthtraining.traditional")
+        }, description: {
+            Text("Start a session to create your first workout.")
+        })
+        .offset(y: -60)
+    }
 
-                                if day.isCompleted {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 14, weight: .bold))
-                                }
-                            }
-                            Text(dayLabel(for: day.date, isToday: day.isToday))
-                                .font(.caption2)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    }
+    // MARK: – Control buttons
+    private var controlButtons: some View {
+        HStack(spacing: 24) {
+            if exerciseCount > 0 {
+                switch state {
+                case .stopped:
+                    Button("Start")   { startTimer() }
+                        .buttonStyle(.borderedProminent)
+
+                case .running:
+                    Button("Pause")   { pauseTimer() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Stop")    { stopTimer() }
+                        .buttonStyle(.bordered)
+
+                case .paused:
+                    Button("Resume")  { resumeTimer() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Stop")    { stopTimer() }
+                        .buttonStyle(.bordered)
                 }
             }
         }
-        .onAppear(perform: generateStreakDays)
     }
 
-    func generateStreakDays() {
-        guard !completedDates.isEmpty else {
-            streakDays = []
-            return
-        }
+    // MARK: – Timer logic
+    private func startTimer() {
+        guard activeExercise?.time ?? 0 > 0 else { return }
+        state   = .running
+        elapsed = 0
+        scheduleTick()
+    }
 
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+    private func pauseTimer() {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+        state = .paused
+    }
 
-        // Always generate 7 days with today in the middle (4th position)
-        var tempDays: [StreakDay] = []
+    private func resumeTimer() {
+        state = .running
+        scheduleTick()
+    }
 
-        for offset in (-3)...3 {
-            if let date = calendar.date(byAdding: .day, value: offset, to: today) {
-                let isCompleted = completedDates.contains(where: { calendar.isDate($0, inSameDayAs: date) })
-                let isToday = calendar.isDate(date, inSameDayAs: today)
-                tempDays.append(StreakDay(date: date, isCompleted: isCompleted, isToday: isToday))
+    private func stopTimer() {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+        state = .stopped
+        elapsed = 0
+        currentExercise = 0
+        currentSet = 1
+    }
+
+    private func scheduleTick() {
+        timerCancellable = Timer
+            .publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in tick() }
+    }
+
+    private func tick() {
+        guard state == .running, let exercise = activeExercise else { return }
+
+        // advance elapsed time
+        elapsed += 1
+
+        if elapsed >= exercise.time {
+            elapsed = 0
+            // next set or next exercise
+            if currentSet < exercise.sets {
+                currentSet += 1
+            } else {
+                currentExercise += 1
+                currentSet = 1
+                if currentExercise >= exerciseCount { stopTimer(); return }
             }
         }
-
-        streakDays = tempDays
     }
 
-    func backgroundColor(for day: StreakDay) -> Color {
-        if day.isToday {
-            return .gray.opacity(0.6)
-        } else if day.isCompleted {
-            return .orange
-        } else {
-            return .gray.opacity(0.3)
-        }
-    }
-
-    func dayLabel(for date: Date, isToday: Bool) -> String {
-        if isToday { return "Today" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E" // e.g., Mon, Tue
-        return formatter.string(from: date)
+    // MARK: – Helper
+    private func formatSeconds(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%02d:%02d", m, s)
     }
 }
 
 #Preview {
-    WorkoutCounterExercise()
+    NavigationStack { WorkoutCounterExercise() }
 }
+

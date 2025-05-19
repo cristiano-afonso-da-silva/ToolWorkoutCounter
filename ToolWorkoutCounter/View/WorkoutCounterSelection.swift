@@ -6,11 +6,23 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct WorkoutCounterSelection: View {
+    
+    @Environment(\.modelContext) private var context
     @Environment(Router.self) var router
+    
+    private let workoutID: String
+    @Query private var workouts: [Workouts]
+    
     @State private var selectedNames: Set<String> = []
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    
+    init(workoutID: String) {
+        self.workoutID = workoutID
+        _workouts = Query(filter: #Predicate<Workouts> { $0.id == workoutID })
+    }
 
     var body: some View {
         VStack {
@@ -27,9 +39,9 @@ struct WorkoutCounterSelection: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(Workouts.presetExerciseNames, id: \.self) { name in
-                        Button(action: {
+                        Button {
                             toggleSelection(name)
-                        }) {
+                        } label: {
                             Text(name)
                                 .foregroundStyle(.white)
                                 .padding(.vertical, 12)
@@ -46,23 +58,33 @@ struct WorkoutCounterSelection: View {
                 .padding(.horizontal)
             }
             Spacer()
+            
             Button("Continue") {
-                router.navigateToForm()
+                addExercisesAndProceed()
             }
+            .buttonStyle(.borderedProminent)
         }
         .padding()
         .navigationBarBackButtonHidden(true)
     }
 
-    private func toggleSelection(_ name: String) {
-        if selectedNames.contains(name) {
-            selectedNames.remove(name)
-        } else {
-            selectedNames.insert(name)
-        }
-    }
-}
+    private var currentWorkout: Workouts? { workouts.first }
 
-#Preview {
-    WorkoutCounterSelection()
+    private func toggleSelection(_ name: String) {
+        if selectedNames.remove(name) == nil { selectedNames.insert(name) }
+    }
+
+    private func addExercisesAndProceed() {
+        guard let workout = currentWorkout, !selectedNames.isEmpty else { return }
+
+        for name in selectedNames {
+            // avoid duplicates if user backs up and re-selects
+            if !workout.exercises.contains(where: { $0.name == name }) {
+                let ex = Exercise(name: name, workoutID: workout.id)
+                workout.exercises.append(ex)
+                context.insert(ex)
+            }
+        }
+        router.navigateToForm(workoutID: workout.id)
+    }
 }

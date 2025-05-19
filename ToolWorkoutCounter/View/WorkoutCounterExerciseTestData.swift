@@ -5,133 +5,76 @@
 //  Created by Cristiano Afonso da Silva on 18/05/2025.
 //
 
+//
+//  WorkoutCounterExerciseTestData.swift
+//  ToolWorkoutCounter
+//
+
 import SwiftUI
 import SwiftData
 
 struct WorkoutCounterExerciseTestData: View {
-    @Environment(\.modelContext) var context
-    @State private var isShowingExerciseSheet = false
-    @Query var exercises: [Exercise] = []
-    @State private var exerciseToEdit: Exercise?
-    
+    @Environment(\.modelContext) private var context
+
+    /// Live list of every workout in the store (newest first)
+    @Query(sort: \Workouts.date, order: .reverse)
+    private var workouts: [Workouts]
+
     var body: some View {
         List {
-            ForEach(exercises, id: \.id) { exercise in
-                ExerciseCell(exercise: exercise)
-                    .onTapGesture {
-                        exerciseToEdit = exercise
-                    }
-            }
-            .onDelete { indexSet in
-                for index in indexSet {
-                    context.delete(exercises[index])
-                }
-            }
-        }
-        .navigationTitle("Exercise")
-        .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $isShowingExerciseSheet) { AddExerciseSheet() }
-        .sheet(item: $exerciseToEdit) { exercise in
-            UpdateExerciseSheet(exercise: exercise)
-        }
-        .toolbar {
-            if !exercises.isEmpty {
-                Button("Add Exercise", systemImage: "plus") {
-                    isShowingExerciseSheet = true
-                }
-            }
-        }
-        .overlay {
-            if exercises.isEmpty {
+            if workouts.isEmpty {
                 ContentUnavailableView(label: {
-                    Label("No Exercises", systemImage: "list.bullet.rectangle.portrait")
+                    Label("No Workouts", systemImage: "list.bullet.rectangle.portrait")
                 }, description: {
-                    Text("Start adding exercise to see your list.")
-                }, actions: {
-                    Button("Add Exercise") { isShowingExerciseSheet = true }
+                    Text("Start a session to create your first workout.")
                 })
                 .offset(y: -60)
+            } else {
+                ForEach(workouts) { workout in
+                    Section(header: header(for: workout)) {
+                        ForEach(workout.exercises) { exercise in
+                            ExerciseRow(exercise: exercise)
+                        }
+                    }
+                }
             }
         }
+        .navigationTitle("All Workouts")
+        .navigationBarTitleDisplayMode(.large)
+    }
+
+    // MARK: - Helpers --------------------------------------------------------
+
+    private func header(for workout: Workouts) -> some View {
+        HStack {
+            Text(workout.date.formatted(.dateTime.year().month().day()))
+            Spacer()
+            Text("\(workout.exercises.count) exercise\(workout.exercises.count == 1 ? "" : "s")")
+                .foregroundStyle(.secondary)
+        }
+        .font(.subheadline)
     }
 }
 
-#Preview {
-    WorkoutCounterExerciseTestData()
-}
+// ── Sub-row showing a single exercise --------------------------------------
 
-struct ExerciseCell: View {
-    
+private struct ExerciseRow: View {
     let exercise: Exercise
-    
+
     var body: some View {
         HStack {
             Text(exercise.name)
             Spacer()
-            Text("Reps: \(exercise.reps)")
-            Text("Time: \(exercise.time)s")
-            Text("Sets: \(exercise.sets)")
+            Text("\(exercise.reps) reps")
+            Text("\(exercise.time)s")
+            Text("\(exercise.sets) sets")
         }
-    }
-    
-}
-
-struct AddExerciseSheet: View {
-    @Environment(\.modelContext) var context
-    @Environment(\.dismiss) private var dismiss
-    
-    @State private var name: String = ""
-    @State private var reps: Int = 0
-    @State private var time: Int = 0
-    @State private var sets: Int = 0
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Exercise Name", text: $name)
-                TextField("Reps", value: $reps, format: .number)
-                TextField("Time", value: $time, format: .number)
-                TextField("Sets", value: $sets, format: .number)
-            }
-            .navigationTitle("New Exercise")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("Save") {
-                        let exercise = Exercise(name: name, reps: reps, time: time, sets: sets)
-                        context.insert(exercise)
-                        dismiss()
-                    }
-                }
-            }
-        }
+        .font(.footnote)
     }
 }
 
-struct UpdateExerciseSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Bindable var exercise: Exercise
-    
-    var body: some View {
-        Form {
-            TextField("Exercise Name", text: $exercise.name)
-            TextField("Reps", value: $exercise.reps, format: .number)
-            TextField("Time", value: $exercise.time, format: .number)
-            TextField("Sets", value: $exercise.sets, format: .number)
-        }
-        .navigationTitle("Update Exercise")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarLeading) {
-                Button("Done") {
-                    dismiss()
-                }
-            }
-        }
+#Preview {
+    NavigationStack {
+        WorkoutCounterExerciseTestData()
     }
 }
