@@ -10,7 +10,6 @@ import SwiftData
 
 struct WorkoutCounterMain: View {
     
-    @Environment(\.modelContext) private var context
     @Environment(Router.self) var router
     
     @Query private var workouts: [Workouts]
@@ -30,9 +29,8 @@ struct WorkoutCounterMain: View {
             }
             Spacer()
             
-            // Start a new session
             Button("Start a session") {
-                startNewSession()
+                router.navigateToSelect()
             }
             
             Button("Start the last exercise") {
@@ -47,12 +45,6 @@ struct WorkoutCounterMain: View {
         }
         .padding()
         .navigationBarBackButtonHidden(true)
-    }
-    
-    private func startNewSession() {
-        let workout = Workouts()
-        context.insert(workout)
-        router.navigateToSelect(workoutID: workout.id)
     }
 }
 

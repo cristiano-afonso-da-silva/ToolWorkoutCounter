@@ -7,11 +7,9 @@
 
 import SwiftUI
 
-// MARK: - Router-aware ViewModifier
 struct RouterViewModifier: ViewModifier {
     @State private var router = Router()
 
-    // map each Route to its destination view
     @ViewBuilder
     private func routeView(for route: Route) -> some View {
         switch route {
@@ -19,11 +17,11 @@ struct RouterViewModifier: ViewModifier {
         case .main:
             WorkoutCounterMain()
 
-        case .select(let workoutID):
-            WorkoutCounterSelection(workoutID: workoutID)
+        case .select:
+            WorkoutCounterSelection()
 
-        case .form(let workoutID):
-            WorkoutCounterForm(workoutID: workoutID)
+        case .form(let names):
+            WorkoutCounterForm(selectedNames: names)
 
         case .exercise:
             WorkoutCounterExercise()
@@ -36,16 +34,15 @@ struct RouterViewModifier: ViewModifier {
     func body(content: Content) -> some View {
         NavigationStack(path: $router.path) {
             content
-                .environment(router)                     // inject router into root
+                .environment(router)
                 .navigationDestination(for: Route.self) { route in
-                    routeView(for: route)                // lazily build destination
-                        .environment(router)             // inject router into child
+                    routeView(for: route)
+                        .environment(router)
                 }
         }
     }
 }
 
-// MARK: - Convenience extension
 extension View {
     func withRouter() -> some View {
         self.modifier(RouterViewModifier())

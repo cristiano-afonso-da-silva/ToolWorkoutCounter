@@ -10,31 +10,30 @@ import SwiftData
 import Combine
 
 struct WorkoutCounterExercise: View {
-    // MARK: – Environment / Data
+    
     @Environment(Router.self) private var router
 
-    /// All workouts, newest first
+
     @Query(sort: \Workouts.date, order: .reverse)
     private var workouts: [Workouts]
 
-    /// Active workout (nil when there is none)
+
     private var workout: Workouts? { workouts.first }
 
-    /// Convenience
+
     private var exerciseList: [Exercise] { workout?.exercises ?? [] }
     private var exerciseCount: Int      { exerciseList.count }
     private var activeExercise: Exercise? {
         guard currentExercise < exerciseList.count else { return nil }
         return exerciseList[currentExercise]
     }
-
-    // MARK: – Timer state
+    
     private enum TimerState { case stopped, running, paused }
     @State private var state: TimerState = .stopped
 
     @State private var currentExercise = 0
     @State private var currentSet      = 1
-    @State private var elapsed         = 0        // seconds within current set
+    @State private var elapsed         = 0
 
     @State private var timerCancellable: AnyCancellable?
 
@@ -58,10 +57,9 @@ struct WorkoutCounterExercise: View {
         }
         .padding()
         .navigationBarBackButtonHidden(true)
-        .onDisappear { stopTimer() }          // tidy up
+        .onDisappear { stopTimer() }
     }
 
-    // MARK: – UI sub-components
     private var header: some View {
         HStack {
             Button("X") { router.popToRoot() }
@@ -106,7 +104,6 @@ struct WorkoutCounterExercise: View {
         .offset(y: -60)
     }
 
-    // MARK: – Control buttons
     private var controlButtons: some View {
         HStack(spacing: 24) {
             if exerciseCount > 0 {
@@ -131,7 +128,6 @@ struct WorkoutCounterExercise: View {
         }
     }
 
-    // MARK: – Timer logic
     private func startTimer() {
         guard activeExercise?.time ?? 0 > 0 else { return }
         state   = .running
@@ -169,12 +165,10 @@ struct WorkoutCounterExercise: View {
     private func tick() {
         guard state == .running, let exercise = activeExercise else { return }
 
-        // advance elapsed time
         elapsed += 1
 
         if elapsed >= exercise.time {
             elapsed = 0
-            // next set or next exercise
             if currentSet < exercise.sets {
                 currentSet += 1
             } else {
@@ -185,7 +179,6 @@ struct WorkoutCounterExercise: View {
         }
     }
 
-    // MARK: – Helper
     private func formatSeconds(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60

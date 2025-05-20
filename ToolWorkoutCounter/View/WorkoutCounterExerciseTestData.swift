@@ -5,20 +5,16 @@
 //  Created by Cristiano Afonso da Silva on 18/05/2025.
 //
 
-//
-//  WorkoutCounterExerciseTestData.swift
-//  ToolWorkoutCounter
-//
-
 import SwiftUI
 import SwiftData
 
 struct WorkoutCounterExerciseTestData: View {
     @Environment(\.modelContext) private var context
 
-    /// Live list of every workout in the store (newest first)
     @Query(sort: \Workouts.date, order: .reverse)
     private var workouts: [Workouts]
+
+    @State private var showDeleteAllAlert = false
 
     var body: some View {
         List {
@@ -31,21 +27,47 @@ struct WorkoutCounterExerciseTestData: View {
                 .offset(y: -60)
             } else {
                 ForEach(workouts) { workout in
-                    Section(header: header(for: workout)) {
-                        ForEach(workout.exercises) { exercise in
-                            ExerciseRow(exercise: exercise)
+                    WorkoutSection(workout: workout) { deleteExercises(at: $0, in: workout) }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { delete(workout) } label: {
+                                Label("Delete Workout", systemImage: "trash")
+                            }
                         }
-                    }
                 }
             }
         }
         .navigationTitle("All Workouts")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if !workouts.isEmpty {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(role: .destructive) { showDeleteAllAlert = true } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+        }
+        .alert("Delete ALL data?",
+               isPresented: $showDeleteAllAlert,
+               actions: {
+                   Button("Cancel", role: .cancel) {}
+                   Button("Delete", role: .destructive) { deleteAll() }
+               },
+               message: { Text("This removes every workout and exercise in the database.") })
     }
 
-    // MARK: - Helpers --------------------------------------------------------
+    private func delete(_ workout: Workouts)        { context.delete(workout) }
+    private func deleteExercises(at offsets: IndexSet, in workout: Workouts) {
+        for index in offsets { context.delete(workout.exercises[index]) }
+    }
+    private func deleteAll() { workouts.forEach(context.delete) }
+}
 
-    private func header(for workout: Workouts) -> some View {
+fileprivate struct WorkoutSection: View {
+    let workout: Workouts
+    let onDelete: (IndexSet) -> Void
+
+    private var header: some View {
         HStack {
             Text(workout.date.formatted(.dateTime.year().month().day()))
             Spacer()
@@ -54,13 +76,19 @@ struct WorkoutCounterExerciseTestData: View {
         }
         .font(.subheadline)
     }
+
+    var body: some View {
+        Section(header: header) {
+            ForEach(workout.exercises) { exercise in
+                ExerciseRow(exercise: exercise)
+            }
+            .onDelete(perform: onDelete)
+        }
+    }
 }
 
-// ── Sub-row showing a single exercise --------------------------------------
-
-private struct ExerciseRow: View {
+fileprivate struct ExerciseRow: View {
     let exercise: Exercise
-
     var body: some View {
         HStack {
             Text(exercise.name)
@@ -72,7 +100,6 @@ private struct ExerciseRow: View {
         .font(.footnote)
     }
 }
-
 #Preview {
     NavigationStack {
         WorkoutCounterExerciseTestData()

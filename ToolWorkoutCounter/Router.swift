@@ -16,12 +16,12 @@ class Router {
         path.append(Route.main)
     }
     
-    func navigateToSelect(workoutID: String) {
-        path.append(Route.select(workoutID))
+    func navigateToSelect() {
+        path.append(Route.select)
     }
     
-    func navigateToForm(workoutID: String) {
-        path.append(Route.form(workoutID))
+    func navigateToForm(_ names: [String]) {
+        path.append(Route.form(names))
     }
     
     func navigateToExercise() {
@@ -44,8 +44,8 @@ class Router {
 
 enum Route: Hashable {
     case main
-    case select(String)
-    case form(String)
+    case select
+    case form([String])
     case exercise
     case exerciseTestData
 }

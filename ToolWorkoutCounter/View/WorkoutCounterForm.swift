@@ -5,75 +5,96 @@
 //  Created by Cristiano Afonso da Silva on 15/05/2025.
 //
 
-//
-//  WorkoutCounterForm.swift
-//  ToolWorkoutCounter
-//
-
 import SwiftUI
 import SwiftData
 
+private struct DraftExercise: Identifiable {
+    let id = UUID()
+    let name: String
+    var reps = 0
+    var time = 0
+    var sets = 0
+}
+
 struct WorkoutCounterForm: View {
-    // ── Environment & input ───────────────────────────────────────────────
-    @Environment(Router.self) private var router
-    let workoutID: String
+    @Environment(\.modelContext) private var context
+    @Environment(Router.self)    private var router
 
-    // ── Fetch only the exercises for this workout ─────────────────────────
-    @Query private var exercises: [Exercise]
+    @State private var drafts: [DraftExercise]
+    @State private var showInvalidAlert = false
 
-    init(workoutID: String) {
-        self.workoutID = workoutID
-        _exercises = Query(filter: #Predicate<Exercise> { $0.workoutID == workoutID })
+    init(selectedNames names: [String]) {
+        _drafts = State(initialValue: names.map { DraftExercise(name: $0) })
     }
 
-    // ── UI ────────────────────────────────────────────────────────────────
     var body: some View {
         VStack {
-            HStack {
-                Button("<") { router.dismiss() }
-                Spacer()
-                Text("Workout Counter")
-                Spacer()
-                Button("...") {}
-            }
+            header
 
             Form {
-                ForEach(exercises) { exercise in
-                    ExerciseEditSection(exercise: exercise)
+                ForEach($drafts) { $draft in
+                    Section(draft.name) {
+                        row("Reps",   bind: $draft.reps)
+                        row("Time (s)", bind: $draft.time)
+                        row("Sets",   bind: $draft.sets)
+                    }
                 }
             }
             .formStyle(.grouped)
 
-            Button("Continue") { router.navigateToExercise() }
+            Button("Continue", action: saveAndProceed)
                 .buttonStyle(.borderedProminent)
                 .padding(.top)
         }
         .padding()
         .navigationBarBackButtonHidden(true)
+        .alert("Invalid values",
+               isPresented: $showInvalidAlert,
+               actions: { Button("OK", role: .cancel) { } },
+               message: {
+                   Text("Reps, time, and sets must all be greater than zero for every exercise.")
+               })
     }
-}
 
-// ── Re-usable sub-view that edits ONE exercise ───────────────────────────
-
-private struct ExerciseEditSection: View {
-    @Bindable var exercise: Exercise        // ← live binding
-
-    var body: some View {
-        Section(exercise.name) {
-            field(label: "Reps",   value: $exercise.reps)
-            field(label: "Time (s)", value: $exercise.time)
-            field(label: "Sets",   value: $exercise.sets)
+    private var header: some View {
+        HStack {
+            Button("<") { router.dismiss() }
+            Spacer()
+            Text("Workout Counter")
+            Spacer()
         }
     }
 
-    private func field(label: String, value: Binding<Int>) -> some View {
+    private func row(_ label: String, bind: Binding<Int>) -> some View {
         HStack {
             Text(label)
             Spacer()
-            TextField("0", value: value, format: .number)
-                .multilineTextAlignment(.trailing)
+            TextField("0", value: bind, format: .number)
                 .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 80)
         }
+    }
+
+    private func saveAndProceed() {
+        guard drafts.allSatisfy({ $0.reps > 0 && $0.time > 0 && $0.sets > 0 }) else {
+            showInvalidAlert = true
+            return
+        }
+
+        let workout = Workouts()
+        context.insert(workout)
+
+        for d in drafts {
+            let ex = Exercise(name: d.name,
+                              reps: d.reps,
+                              time: d.time,
+                              sets: d.sets,
+                              workoutID: workout.id)
+            workout.exercises.append(ex)
+            context.insert(ex)
+        }
+
+        router.navigateToExercise()
     }
 }

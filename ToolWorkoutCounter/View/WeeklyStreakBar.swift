@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-/// One cell’s state
+
 fileprivate struct StreakDay: Identifiable {
     let id   = UUID()
     let date: Date
@@ -18,19 +18,19 @@ fileprivate struct StreakDay: Identifiable {
 }
 
 struct WeeklyStreakBar: View {
-    // ── Fetch ALL workouts so we can check past days ------------
+
     @Query private var workouts: [Workouts]
 
     private var bodyDays: [StreakDay] {
         let cal   = Calendar.current
         let today = cal.startOfDay(for: Date())
 
-        // Helper: does any workout exist on this date?
+
         func completed(on day: Date) -> Bool {
             workouts.contains { cal.isDate($0.date, inSameDayAs: day) }
         }
 
-        // Build −3 … +2 day offsets (6 boxes; today is offset 0 → 4th box)
+
         return (-3...2).map { offset -> StreakDay in
             let date       = cal.date(byAdding: .day, value: offset, to: today)!
             let isToday    = offset == 0
@@ -64,7 +64,7 @@ struct WeeklyStreakBar: View {
                         .foregroundStyle(.secondary)
                 }
 
-                // draw connecting line except after the last box
+
                 if idx != bodyDays.count - 1 {
                     Rectangle()
                         .fill(Color.gray.opacity(0.4))
@@ -74,15 +74,14 @@ struct WeeklyStreakBar: View {
         }
     }
 
-    // ── Color logic ---------------------------------------------------------
+
     private func color(for day: StreakDay) -> Color {
-        if day.isToday        { return Color.gray.opacity(0.5) }   // light-gray
-        if day.isFuture       { return Color.gray.opacity(0.3) }   // dark-gray
-        if day.isCompleted    { return Color.orange }              // ✓ orange
-        return Color.gray.opacity(0.3)                             // dark-gray
+        if day.isToday        { return Color.gray.opacity(0.5) }
+        if day.isFuture       { return Color.gray.opacity(0.3) }
+        if day.isCompleted    { return Color.orange }
+        return Color.gray.opacity(0.3)
     }
 
-    // e.g. “Fri”, “Sat”, “Today”
     private func label(for day: StreakDay) -> String {
         if day.isToday { return "Today" }
         let fmt = DateFormatter()
